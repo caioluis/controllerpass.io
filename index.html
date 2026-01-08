@@ -135,8 +135,13 @@
                     <option value="Treino">Treino (100 XP)</option>
                     <option value="Aula">Aula (150 XP)</option>
                     <option value="Quest">Quest (200 XP)</option>
-                    <option value="Missão">Missão (300 XP)</option>
-                    <option value="Raid/Evento">Raid/Evento (600 XP)</option>
+                    <option value="Missão (G4)">Missão G4 (300 XP)</option>
+                    <option value="Missão (G3)">Missão G3 (400 XP)</option>
+                    <option value="Missão (G2)">Missão G2 (500 XP)</option>
+                    <option value="Missão (G1)">Missão G1 (600 XP)</option>
+                    <option value="Missão (Semi-Esp)">Missão Semi-Especial (700 XP)</option>
+                    <option value="Missão (Especial)">Missão Especial (800 XP)</option>
+                    <option value="Raid/Evento">Raid/Evento (1000 XP)</option>
                 </select>
 
                 <div id="postCountBox" style="display:block;">
@@ -152,7 +157,7 @@
 
             <label>Histórico</label>
             <div id="itemsList" class="items-list">
-                </div>
+            </div>
 
             <br>
             <button class="btn btn-outline" onclick="generateCode()">Copiar Código HTML</button>
@@ -191,15 +196,20 @@
     <script>
         const CACHE_KEY = 'ga_sp_v2026_ctrl';
         
-        // DADOS
+        // DADOS (ATUALIZADOS)
         const XP_DATA = {
             'RP Livre': { base: 15, icon: '💬', variable: true },
             'Ocorrência': { base: 50, icon: '🚨', variable: false },
             'Treino': { base: 100, icon: '⚔️', variable: false },
             'Aula': { base: 150, icon: '🎓', variable: false },
             'Quest': { base: 200, icon: '🗺️', variable: false },
-            'Missão': { base: 300, icon: '📜', variable: false },
-            'Raid/Evento': { base: 600, icon: '👹', variable: false }
+            'Missão (G4)': { base: 300, icon: '📜', variable: false },
+            'Missão (G3)': { base: 400, icon: '📜', variable: false },
+            'Missão (G2)': { base: 500, icon: '📜', variable: false },
+            'Missão (G1)': { base: 600, icon: '📜', variable: false },
+            'Missão (Semi-Esp)': { base: 700, icon: '📜', variable: false },
+            'Missão (Especial)': { base: 800, icon: '📜', variable: false },
+            'Raid/Evento': { base: 1000, icon: '👹', variable: false }
         };
 
         let activities = [];
@@ -443,14 +453,19 @@
                 activities = [];
                 const items = doc.querySelectorAll('.sp-activity-item');
                 items.forEach(item => {
-                    const textType = item.querySelector('.sp-act-type').innerText.split(' ')[0]; // Pega só o nome, tira icones
-                    // Need to map text back to logic type if needed, but simple string works mostly
-                    // Cleaning up symbols
+                    const textType = item.querySelector('.sp-act-type').innerText;
+                    // Cleaning up symbols and spaces
                     let type = textType.replace('⚠️', '').trim();
-                    // Fix type mapping due to icons in HTML
-                    Object.keys(XP_DATA).forEach(k => {
-                        if(item.querySelector('.sp-act-type').innerText.includes(k)) type = k;
-                    });
+                    
+                    // Match against keys
+                    // Precisamos garantir que pegue "Missão (G4)" inteiro, não só Missão
+                    const possibleKeys = Object.keys(XP_DATA);
+                    // Find the key that is contained in the textType
+                    const matchedKey = possibleKeys.find(key => type.includes(key));
+                    
+                    if(matchedKey) {
+                        type = matchedKey;
+                    }
 
                     const xpText = item.querySelector('.sp-act-xp').innerText;
                     const xp = parseInt(xpText.replace(/\D/g, ''));
