@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Season Pass Controller</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* UI DO EDITOR */
+        body { background: #050505; color: #ccc; font-family: 'Inter', sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #000; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        
+        /* SIDEBAR */
+        .editor-sidebar { width: 420px; background: #0a0a0a; border-right: 1px solid #1a1a1a; display: flex; flex-direction: column; z-index: 10; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
+        .editor-header { padding: 20px; border-bottom: 1px solid #1a1a1a; background: #0f0f0f; }
+        .editor-header h2 { font-family: 'Rajdhani', sans-serif; margin: 0; color: #fff; font-size: 1.4em; text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+        .editor-content { padding: 20px; overflow-y: auto; flex: 1; }
+        
+        /* PREVIEW */
+        .preview-area { flex: 1; padding: 40px; background: #000; background-image: radial-gradient(#151515 1px, transparent 1px); background-size: 20px 20px; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; }
+
+        /* INPUTS */
+        label { font-size: 0.7em; color: #666; text-transform: uppercase; margin-bottom: 5px; display: block; font-weight: 700; letter-spacing: 0.5px; }
+        input, select { width: 100%; background: #141414; border: 1px solid #2a2a2a; color: #fff; padding: 10px; border-radius: 4px; font-family: 'Inter', sans-serif; margin-bottom: 15px; box-sizing: border-box; transition: 0.2s; font-size: 0.9em; }
+        input:focus, select:focus { border-color: #7b1fa2; outline: none; background: #1a1a1a; }
+        input::placeholder { color: #444; }
+
+        /* ADD BOX */
+        .add-box { background: #111; padding: 15px; border: 1px solid #222; border-radius: 6px; margin-bottom: 20px; }
+        .add-title { color: #fff; font-size: 0.9em; font-weight: 600; margin-bottom: 10px; display: block; border-bottom: 1px solid #222; padding-bottom: 5px; }
+        
+        /* LIST OF ITEMS */
+        .items-list { display: flex; flex-direction: column; gap: 8px; }
+        .item-row { background: #141414; padding: 10px 15px; border-radius: 4px; border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; }
+        .item-row.is-dup { border-left: 3px solid #ffb300; }
+        .item-info { display: flex; flex-direction: column; }
+        .item-type { color: #fff; font-weight: 600; font-size: 0.95em; }
+        .item-link { color: #7b1fa2; font-size: 0.8em; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* BUTTONS */
+        .btn { width: 100%; padding: 12px; background: #7b1fa2; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 700; text-transform: uppercase; transition: 0.2s; font-size: 0.85em; letter-spacing: 1px; }
+        .btn:hover { background: #9c27b0; }
+        .btn-sm { width: auto; padding: 5px 10px; font-size: 0.75em; margin: 0; }
+        .btn-outline { background: transparent; border: 1px solid #333; color: #888; }
+        .btn-outline:hover { border-color: #666; color: #fff; }
+        .btn-del { background: transparent; color: #cf6679; border: none; cursor: pointer; font-size: 1.2em; padding: 0 5px; }
+        .btn-del:hover { color: #ff5252; }
+
+        /* STATUS BOX */
+        .status-overview { display: flex; gap: 10px; margin-bottom: 20px; }
+        .stat-card { flex: 1; background: #111; padding: 10px; border-radius: 4px; border: 1px solid #222; text-align: center; }
+        .stat-val { font-family: 'Rajdhani', sans-serif; font-size: 1.4em; color: #fff; font-weight: 700; display: block; }
+        .stat-lbl { font-size: 0.65em; text-transform: uppercase; color: #666; }
+
+        /* MODAL & TOAST */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 100; display: none; justify-content: center; align-items: center; }
+        .modal { background: #111; border: 1px solid #333; padding: 25px; width: 90%; max-width: 400px; border-radius: 8px; box-shadow: 0 20px 50px #000; text-align: center; }
+        .modal h3 { color: #fff; margin-top: 0; }
+        .modal p { color: #aaa; font-size: 0.9em; margin-bottom: 20px; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(50px); background: #2e7d32; color: white; padding: 10px 25px; border-radius: 50px; font-weight: 600; font-size: 0.9em; opacity: 0; transition: 0.3s; z-index: 200; box-shadow: 0 5px 15px rgba(0,0,0,0.5); pointer-events: none; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.error { background: #c62828; }
+        .toast.warning { background: #ff8f00; color: #000; }
+
+        @media (max-width: 900px) { body { flex-direction: column; overflow-y: auto; } .editor-sidebar { width: 100%; height: auto; border-right: none; } .preview-area { padding: 15px; } }
+
+        /* CSS PREVIEW INTERNO (SIMULAÇÃO) */
+        .sp-tracker-container{--spc-bg:#080808;--spc-panel:#111;--spc-border:#222;--spc-primary:#6a1b9a;--spc-primary-light:#ab47bc;--spc-accent:#d500f9;--spc-text:#e0e0e0;--spc-text-dim:#777;--spc-warning:#ffb300;max-width:700px;margin:0 auto;background-color:var(--spc-bg);color:var(--spc-text);font-family:'Inter',sans-serif;border:1px solid var(--spc-border);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.7);overflow:hidden;position:relative}
+        .sp-tracker-banner{width:100%;height:180px;background-size:cover;background-position:center;position:relative;border-bottom:1px solid var(--spc-border)}
+        .sp-tracker-banner::after{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to top,var(--spc-bg) 10%,transparent 100%)}
+        .sp-tracker-header{padding:20px 30px;display:flex;justify-content:space-between;align-items:flex-end;margin-top:-60px;position:relative;z-index:2}
+        .sp-user-info h2{font-family:'Rajdhani',sans-serif;font-size:2.2em;margin:0;text-transform:uppercase;color:#fff;line-height:1;text-shadow:0 2px 5px rgba(0,0,0,0.8)}
+        .sp-user-info span a{font-size:0.85em;color:var(--spc-primary-light);letter-spacing:1px;text-transform:uppercase;font-weight:600;text-decoration:none!important;text-shadow:0 1px 3px rgba(0,0,0,0.8);transition:0.3s}
+        .sp-total-xp{text-align:right}
+        .sp-total-xp .val{font-family:'Rajdhani',sans-serif;font-size:2.5em;color:#fff;font-weight:700;text-shadow:0 0 15px var(--spc-primary)}
+        .sp-total-xp .label{font-size:0.75em;color:#aaa;text-transform:uppercase;display:block;margin-top:-8px;background:rgba(0,0,0,0.6);padding:2px 6px;border-radius:4px}
+        .sp-progress-area{padding:25px 30px;background:var(--spc-bg);border-bottom:1px solid var(--spc-border);display:flex;flex-direction:column;gap:15px}
+        .sp-bar-group{display:flex;flex-direction:column;gap:5px}
+        .sp-bar-label{display:flex;justify-content:space-between;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.9em;color:var(--spc-text-dim);text-transform:uppercase}
+        .sp-bar-bg{width:100%;height:8px;background:#151515;border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.5)}
+        .sp-bar-fill{height:100%;border-radius:4px;transition:width 0.6s ease;position:relative}
+        .fill-level{background:linear-gradient(90deg,#4a148c,#7b1fa2)}
+        .fill-season{background:linear-gradient(90deg,#ff6f00,#ffb300)}
+        .sp-activity-list{padding:0;margin:0;list-style:none}
+        .sp-activity-item{display:grid;grid-template-columns:50px 1fr auto;padding:18px 30px;border-bottom:1px solid rgba(255,255,255,0.03);align-items:center;transition:0.2s;gap:15px}
+        .sp-activity-item:last-child{border-bottom:none}
+        .sp-act-icon{width:40px;height:40px;background:#161616;border:1px solid #252525;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.2em;color:#ccc}
+        .sp-act-details{display:flex;flex-direction:column}
+        .sp-act-type{font-weight:600;color:#eee;font-size:1em;display:flex;align-items:center;gap:8px}
+        .sp-act-link{font-size:0.85em;color:var(--spc-primary-light);text-decoration:none!important;margin-top:3px;opacity:0.7}
+        .sp-act-xp{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.1em;color:var(--spc-text)}
+        .sp-act-xp span{color:var(--spc-primary);font-size:0.8em;margin-left:2px}
+        .sp-duplicate{border-left:3px solid var(--spc-warning);background:rgba(255,179,0,0.05)}
+        .sp-duplicate-icon{color:var(--spc-warning);font-size:0.8em;cursor:help}
+    </style>
+</head>
+<body>
+
+    <div class="editor-sidebar">
+        <div class="editor-header">
+            <h2>Season Log <button class="btn btn-sm btn-outline" onclick="openImport()">Importar</button></h2>
+        </div>
+        <div class="editor-content">
+            <div class="status-overview">
+                <div class="stat-card">
+                    <span class="stat-val" id="st-level">0</span>
+                    <span class="stat-lbl">Nível</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-val" id="st-xp">0</span>
+                    <span class="stat-lbl">XP Total</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-val" id="st-next">100</span>
+                    <span class="stat-lbl">Próximo Nv.</span>
+                </div>
+            </div>
+
+            <label>Banner URL</label>
+            <input type="text" id="inpBanner" placeholder="https://..." oninput="updatePreview()">
+            
+            <label>Nome do Personagem</label>
+            <input type="text" id="inpName" placeholder="Ex: Yuta Okkotsu" oninput="updatePreview()">
+
+            <label>Link da Ficha</label>
+            <input type="text" id="inpLink" placeholder="URL da ficha" oninput="updatePreview()">
+
+            <div class="add-box">
+                <span class="add-title">+ Nova Atividade</span>
+                
+                <label>Tipo</label>
+                <select id="selType" onchange="togglePostInput()">
+                    <option value="RP Livre">RP Livre (15 XP/post)</option>
+                    <option value="Ocorrência">Ocorrência (50 XP)</option>
+                    <option value="Treino">Treino (100 XP)</option>
+                    <option value="Aula">Aula (150 XP)</option>
+                    <option value="Quest">Quest (200 XP)</option>
+                    <option value="Missão">Missão (300 XP)</option>
+                    <option value="Raid/Evento">Raid/Evento (600 XP)</option>
+                </select>
+
+                <div id="postCountBox" style="display:block;">
+                    <label>Nº de Posts</label>
+                    <input type="number" id="inpPosts" value="1" min="1">
+                </div>
+
+                <label>Link da Comprovação</label>
+                <input type="text" id="inpActLink" placeholder="https://goldenage-rpg...">
+
+                <button class="btn" onclick="addEntry()">Adicionar</button>
+            </div>
+
+            <label>Histórico</label>
+            <div id="itemsList" class="items-list">
+                </div>
+
+            <br>
+            <button class="btn btn-outline" onclick="generateCode()">Copiar Código HTML</button>
+            <button class="btn btn-outline" style="border-color:#c62828; color:#c62828; margin-top:5px;" onclick="resetAll()">Resetar Tudo</button>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div id="previewContainer"></div>
+    </div>
+
+    <div class="modal-overlay" id="dupModal">
+        <div class="modal">
+            <h3>⚠️ Link Duplicado</h3>
+            <p>Este link já foi utilizado em outra atividade neste log. Deseja adicionar mesmo assim?</p>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-outline" onclick="closeDup()">Cancelar</button>
+                <button class="btn" onclick="confirmDup()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="importModal">
+        <div class="modal">
+            <h3>Importar Código</h3>
+            <textarea id="importInput" rows="5" style="width:100%; background:#222; border:1px solid #444; color:#fff;"></textarea>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button class="btn btn-outline" onclick="closeImport()">Cancelar</button>
+                <button class="btn" onclick="runImport()">Carregar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Mensagem</div>
+
+    <script>
+        const CACHE_KEY = 'ga_sp_v2026_ctrl';
+        
+        // DADOS
+        const XP_DATA = {
+            'RP Livre': { base: 15, icon: '💬', variable: true },
+            'Ocorrência': { base: 50, icon: '🚨', variable: false },
+            'Treino': { base: 100, icon: '⚔️', variable: false },
+            'Aula': { base: 150, icon: '🎓', variable: false },
+            'Quest': { base: 200, icon: '🗺️', variable: false },
+            'Missão': { base: 300, icon: '📜', variable: false },
+            'Raid/Evento': { base: 600, icon: '👹', variable: false }
+        };
+
+        let activities = [];
+        let pendingDupData = null; // Para guardar dados enquanto o modal confirma
+
+        // INIT
+        function init() {
+            loadLocal();
+            togglePostInput();
+            updatePreview();
+        }
+
+        // UX: Mostrar/Esconder campo de posts
+        function togglePostInput() {
+            const type = document.getElementById('selType').value;
+            const box = document.getElementById('postCountBox');
+            box.style.display = XP_DATA[type].variable ? 'block' : 'none';
+        }
+
+        // ADICIONAR ITEM
+        function addEntry() {
+            const type = document.getElementById('selType').value;
+            const link = document.getElementById('inpActLink').value.trim();
+            let xp = 0;
+
+            if(!link) {
+                showToast("É obrigatório inserir o link!", "error");
+                return;
+            }
+
+            // Calc XP
+            if(XP_DATA[type].variable) {
+                const posts = parseInt(document.getElementById('inpPosts').value) || 1;
+                xp = posts * XP_DATA[type].base;
+            } else {
+                xp = XP_DATA[type].base;
+            }
+
+            // Check Duplicate
+            const isDup = activities.some(a => a.link === link);
+            if(isDup) {
+                pendingDupData = { type, link, xp };
+                document.getElementById('dupModal').style.display = 'flex';
+                return;
+            }
+
+            commitAdd({ type, link, xp });
+        }
+
+        function confirmDup() {
+            if(pendingDupData) commitAdd(pendingDupData);
+            closeDup();
+        }
+
+        function closeDup() {
+            document.getElementById('dupModal').style.display = 'none';
+            pendingDupData = null;
+        }
+
+        function commitAdd(data) {
+            activities.push(data);
+            // Limpar Inputs
+            document.getElementById('inpActLink').value = '';
+            document.getElementById('inpPosts').value = '1';
+            updatePreview();
+            showToast("Atividade Adicionada!");
+        }
+
+        function removeActivity(index) {
+            activities.splice(index, 1);
+            updatePreview();
+        }
+
+        // RENDERIZAÇÃO
+        function updatePreview() {
+            const name = document.getElementById('inpName').value || 'Nome do Personagem';
+            const link = document.getElementById('inpLink').value || '#';
+            const banner = document.getElementById('inpBanner').value;
+
+            // Ordenação: Itens novos embaixo da lista (o array push já faz isso naturalmente)
+            // Mas vamos renderizar na ordem do array
+            
+            let totalXP = 0;
+            let listHTML = '';
+            let editListHTML = '';
+
+            activities.forEach((act, index) => {
+                totalXP += act.xp;
+                const icon = XP_DATA[act.type] ? XP_DATA[act.type].icon : '✨';
+                
+                // Check dup for display marker
+                const isDup = activities.filter(a => a.link === act.link).length > 1;
+                const dupClass = isDup ? 'sp-duplicate' : '';
+                const dupIcon = isDup ? '<span class="sp-duplicate-icon" title="Link Duplicado">⚠️</span>' : '';
+
+                // Preview HTML
+                listHTML += `
+                <li class="sp-activity-item ${dupClass}">
+                    <div class="sp-act-icon">${icon}</div>
+                    <div class="sp-act-details">
+                        <span class="sp-act-type">${act.type} ${dupIcon}</span>
+                        <a href="${act.link}" target="_blank" class="sp-act-link">Ver Comprovante ↗</a>
+                    </div>
+                    <div class="sp-act-xp">+${act.xp}<span>XP</span></div>
+                </li>`;
+
+                // Editor List HTML
+                editListHTML += `
+                <div class="item-row ${isDup ? 'is-dup' : ''}">
+                    <div class="item-info">
+                        <span class="item-type">${act.type} (${act.xp} XP) ${isDup ? '⚠️' : ''}</span>
+                        <span class="item-link">${act.link}</span>
+                    </div>
+                    <button class="btn-del" onclick="removeActivity(${index})">×</button>
+                </div>`;
+            });
+
+            // Cálculos
+            const currentLevel = Math.floor(totalXP / 100);
+            const nextLevelXP = 100 - (totalXP % 100);
+            const seasonProg = Math.min((totalXP / 6000) * 100, 100).toFixed(1);
+            const levelProg = totalXP % 100;
+
+            // Update UI Stats
+            document.getElementById('st-level').innerText = currentLevel;
+            document.getElementById('st-xp').innerText = totalXP;
+            document.getElementById('st-next').innerText = nextLevelXP;
+            document.getElementById('itemsList').innerHTML = editListHTML;
+
+            // HTML Template Final
+            const cssUrl = "https://goldenagerpg.github.io/templates.io/season-pass-controller.css";
+            const bannerStyle = banner ? `background-image: url('${banner}');` : '';
+
+            const finalHTML = `
+<link href="${cssUrl}" rel="stylesheet" type="text/css">
+<div class="sp-tracker-container">
+    <div class="sp-tracker-banner" style="${bannerStyle}"></div>
+    <div class="sp-tracker-header">
+        <div class="sp-user-info">
+            <h2>${name}</h2>
+            <span><a href="${link}">Ficha de Personagem</a></span>
+        </div>
+        <div class="sp-total-xp">
+            <span class="val">${totalXP}</span>
+            <span class="label">XP Total</span>
+        </div>
+    </div>
+    
+    <div class="sp-progress-area">
+        <div class="sp-bar-group">
+            <div class="sp-bar-label">
+                <span>Nível Atual: <span style="color:#fff">${currentLevel}</span></span>
+                <span>${levelProg}/100</span>
+            </div>
+            <div class="sp-bar-bg">
+                <div class="sp-bar-fill fill-level" style="width: ${levelProg}%"></div>
+            </div>
+        </div>
+
+        <div class="sp-bar-group">
+            <div class="sp-bar-label">
+                <span>Meta da Temporada (Nv. 60)</span>
+                <span>${seasonProg}%</span>
+            </div>
+            <div class="sp-bar-bg">
+                <div class="sp-bar-fill fill-season" style="width: ${seasonProg}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <ul class="sp-activity-list">
+        ${listHTML}
+    </ul>
+</div>`;
+
+            document.getElementById('previewContainer').innerHTML = finalHTML;
+            saveLocal();
+        }
+
+        // UTILS
+        function showToast(msg, type="success") {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.className = `toast show ${type}`;
+            setTimeout(() => t.className = "toast", 3000);
+        }
+
+        function generateCode() {
+            const html = document.getElementById('previewContainer').innerHTML;
+            const minified = html.replace(/\s+/g, ' ').trim();
+            navigator.clipboard.writeText(minified).then(() => showToast("Código copiado!"));
+        }
+
+        function saveLocal() {
+            const data = {
+                name: document.getElementById('inpName').value,
+                link: document.getElementById('inpLink').value,
+                banner: document.getElementById('inpBanner').value,
+                acts: activities
+            };
+            localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        }
+
+        function loadLocal() {
+            const data = JSON.parse(localStorage.getItem(CACHE_KEY));
+            if(data) {
+                document.getElementById('inpName').value = data.name || '';
+                document.getElementById('inpLink').value = data.link || '';
+                document.getElementById('inpBanner').value = data.banner || '';
+                if(data.acts) activities = data.acts;
+            }
+        }
+
+        function resetAll() {
+            if(confirm("Apagar todos os dados?")) {
+                localStorage.removeItem(CACHE_KEY);
+                location.reload();
+            }
+        }
+
+        // IMPORT
+        function openImport() { document.getElementById('importModal').style.display = 'flex'; }
+        function closeImport() { document.getElementById('importModal').style.display = 'none'; }
+        
+        function runImport() {
+            const code = document.getElementById('importInput').value;
+            if(!code) return;
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(code, 'text/html');
+
+                // Basic Info
+                document.getElementById('inpName').value = doc.querySelector('.sp-user-info h2').innerText;
+                document.getElementById('inpLink').value = doc.querySelector('.sp-user-info a').getAttribute('href');
+                
+                const bannerStyle = doc.querySelector('.sp-tracker-banner').getAttribute('style');
+                const bannerMatch = bannerStyle.match(/url\(['"]?(.*?)['"]?\)/);
+                if(bannerMatch) document.getElementById('inpBanner').value = bannerMatch[1];
+
+                // Activities
+                activities = [];
+                const items = doc.querySelectorAll('.sp-activity-item');
+                items.forEach(item => {
+                    const textType = item.querySelector('.sp-act-type').innerText.split(' ')[0]; // Pega só o nome, tira icones
+                    // Need to map text back to logic type if needed, but simple string works mostly
+                    // Cleaning up symbols
+                    let type = textType.replace('⚠️', '').trim();
+                    // Fix type mapping due to icons in HTML
+                    Object.keys(XP_DATA).forEach(k => {
+                        if(item.querySelector('.sp-act-type').innerText.includes(k)) type = k;
+                    });
+
+                    const xpText = item.querySelector('.sp-act-xp').innerText;
+                    const xp = parseInt(xpText.replace(/\D/g, ''));
+                    const link = item.querySelector('.sp-act-link').getAttribute('href');
+                    
+                    activities.push({ type, xp, link });
+                });
+
+                closeImport();
+                updatePreview();
+                showToast("Importado com sucesso!");
+            } catch(e) {
+                showToast("Erro ao importar.", "error");
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
