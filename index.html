@@ -141,7 +141,8 @@
                     <option value="Missão (G1)">Missão G1 (600 XP)</option>
                     <option value="Missão (Semi-Esp)">Missão Semi-Especial (700 XP)</option>
                     <option value="Missão (Especial)">Missão Especial (800 XP)</option>
-                    <option value="Raid/Evento">Raid/Evento (1000 XP)</option>
+                    <option value="Raid">Raid (150 XP/post)</option>
+                    <option value="Evento">Evento (1000 XP)</option>
                 </select>
 
                 <div id="postCountBox" style="display:block;">
@@ -209,7 +210,8 @@
             'Missão (G1)': { base: 600, icon: '📜', variable: false },
             'Missão (Semi-Esp)': { base: 700, icon: '📜', variable: false },
             'Missão (Especial)': { base: 800, icon: '📜', variable: false },
-            'Raid/Evento': { base: 1000, icon: '👹', variable: false }
+            'Raid': { base: 150, icon: '👹', variable: true },
+            'Evento': { base: 1000, icon: '🎉', variable: false }
         };
 
         let activities = [];
